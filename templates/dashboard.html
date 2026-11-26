@@ -1,0 +1,776 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - NutriVision AI</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+
+<body class="bg-slate-950 text-slate-100 min-h-screen">
+
+    <!-- Navbar -->
+    <nav class="bg-slate-900 border-b border-slate-800 px-6 py-4 sticky top-0 z-20">
+        <div class="max-w-7xl mx-auto flex flex-wrap justify-between items-center gap-4">
+            <div class="flex items-center gap-6">
+                <span class="text-xl font-bold text-white">NutriVision <span class="text-emerald-400">AI</span></span>
+                <div class="flex gap-2 bg-slate-950 p-1 rounded-xl border border-slate-800">
+                    <button onclick="switchTab('scanner')" id="tab-scanner"
+                        class="tab-btn px-4 py-1.5 rounded-lg text-sm font-medium bg-emerald-500 text-slate-950">AI Food
+                        Scanner</button>
+                    <button onclick="switchTab('graphs')" id="tab-graphs"
+                        class="tab-btn px-4 py-1.5 rounded-lg text-sm font-medium text-slate-400 hover:text-white">Graphs
+                        & Analytics</button>
+                    <button onclick="switchTab('bmi')" id="tab-bmi"
+                        class="tab-btn px-4 py-1.5 rounded-lg text-sm font-medium text-slate-400 hover:text-white">BMI &
+                        Health</button>
+                </div>
+            </div>
+            <div class="flex items-center gap-4">
+                <span class="text-sm text-slate-400">Hi, <strong class="text-white">{{ username }}</strong></span>
+                <a href="/logout"
+                    class="px-3 py-1.5 text-sm bg-slate-800 hover:bg-rose-500/80 rounded-lg transition">Logout</a>
+            </div>
+        </div>
+    </nav>
+
+    <main class="max-w-7xl mx-auto p-6 space-y-6">
+
+        <!-- Top Summary Bar (Always Visible) -->
+        <section class="grid grid-cols-1 lg:grid-cols-4 gap-4">
+            <div class="lg:col-span-3 bg-slate-900 border border-slate-800 rounded-2xl p-5">
+                <div class="flex flex-wrap justify-between items-center gap-2 mb-2">
+                    <h2 class="font-semibold text-slate-200">Today's Calorie & Macro Progress</h2>
+                    <span class="text-sm text-slate-400">
+                        <strong id="remainingCal" class="text-emerald-400">2000</strong> kcal remaining (Goal: <strong
+                            id="goalVal">2000</strong> kcal)
+                    </span>
+                </div>
+                <div class="w-full bg-slate-950 rounded-full h-3 mb-4 overflow-hidden border border-slate-800">
+                    <div id="calProgress" class="bg-emerald-400 h-3 rounded-full transition-all duration-500"
+                        style="width: 0%"></div>
+                </div>
+                <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 text-center">
+                    <div class="bg-slate-950 p-3 rounded-xl border border-slate-800">
+                        <p class="text-xs text-slate-400 uppercase">Calories</p>
+                        <p class="text-xl font-bold text-emerald-400"><span id="sumCal">0</span> <span
+                                class="text-xs font-normal">kcal</span></p>
+                    </div>
+                    <div class="bg-slate-950 p-3 rounded-xl border border-slate-800">
+                        <p class="text-xs text-slate-400 uppercase">Protein</p>
+                        <p class="text-xl font-bold text-sky-400"><span id="sumPro">0</span> <span
+                                class="text-xs font-normal">g</span></p>
+                    </div>
+                    <div class="bg-slate-950 p-3 rounded-xl border border-slate-800">
+                        <p class="text-xs text-slate-400 uppercase">Carbs</p>
+                        <p class="text-xl font-bold text-amber-400"><span id="sumCarb">0</span> <span
+                                class="text-xs font-normal">g</span></p>
+                    </div>
+                    <div class="bg-slate-950 p-3 rounded-xl border border-slate-800">
+                        <p class="text-xs text-slate-400 uppercase">Fat</p>
+                        <p class="text-xl font-bold text-rose-400"><span id="sumFat">0</span> <span
+                                class="text-xs font-normal">g</span></p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Water Intake + Quick BMI Card -->
+            <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 flex flex-col justify-between">
+                <div>
+                    <div class="flex justify-between items-center mb-2">
+                        <span class="text-sm font-semibold text-sky-400">Water Tracker</span>
+                        <span class="text-xs text-slate-400">Target: 8 glasses</span>
+                    </div>
+                    <div class="flex items-center justify-between bg-slate-950 p-3 rounded-xl border border-slate-800">
+                        <button onclick="updateWater(-1)"
+                            class="w-8 h-8 rounded-lg bg-slate-800 hover:bg-slate-700 font-bold">-</button>
+                        <div class="text-center">
+                            <span id="waterCount" class="text-2xl font-bold text-sky-400">0</span>
+                            <span class="text-xs text-slate-400 block">glasses (<span id="waterMl">0</span> ml)</span>
+                        </div>
+                        <button onclick="updateWater(1)"
+                            class="w-8 h-8 rounded-lg bg-sky-500 hover:bg-sky-600 text-slate-950 font-bold">+</button>
+                    </div>
+                </div>
+                <div class="mt-3 pt-3 border-t border-slate-800 flex justify-between items-center text-sm">
+                    <span class="text-slate-400">Your BMI:</span>
+                    <span id="miniBmiBadge" class="font-bold text-emerald-400">--</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- ==================== TAB 1: AI SCANNER & MEAL LOG ==================== -->
+        <div id="view-scanner" class="space-y-6">
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <!-- Left: AI Upload OR Manual Search -->
+                <section class="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-5">
+                    <div class="flex justify-between items-center">
+                        <h2 class="text-lg font-semibold">1. Recognize Food via AI</h2>
+                        <span class="text-xs px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-400">101+
+                            Dishes</span>
+                    </div>
+
+                    <label
+                        class="flex flex-col items-center justify-center border-2 border-dashed border-slate-700 hover:border-emerald-400 rounded-xl p-6 cursor-pointer transition bg-slate-950/60">
+                        <img id="previewImg" class="hidden max-h-52 rounded-lg mb-3 object-contain" alt="Preview">
+                        <span id="uploadPrompt" class="text-slate-400 text-sm text-center">Click to upload a food photo
+                            (JPG, PNG, WEBP)</span>
+                        <input type="file" id="foodInput" accept="image/*" class="hidden">
+                    </label>
+
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-xs text-slate-400 mb-1">Meal Type</label>
+                            <select id="mealType"
+                                class="w-full px-3 py-2 rounded-lg bg-slate-950 border border-slate-800 focus:border-emerald-400 focus:outline-none text-sm">
+                                <option>Breakfast</option>
+                                <option selected>Lunch</option>
+                                <option>Dinner</option>
+                                <option>Snack</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-xs text-slate-400 mb-1">Portion (grams, optional)</label>
+                            <input type="number" id="portionInput" placeholder="Auto serving" min="10" max="2000"
+                                class="w-full px-3 py-2 rounded-lg bg-slate-950 border border-slate-800 focus:border-emerald-400 focus:outline-none text-sm">
+                        </div>
+                    </div>
+
+                    <button id="analyzeBtn" onclick="analyzeFood()"
+                        class="w-full py-2.5 bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-semibold rounded-lg transition">
+                        Analyze Image & Estimate Calories
+                    </button>
+                    <p id="statusMsg" class="text-sm text-center text-slate-400 hidden"></p>
+
+                    <!-- Manual Entry Divider -->
+                    <div class="border-t border-slate-800 pt-4">
+                        <p class="text-xs uppercase text-slate-400 mb-2">Or Log Food Manually (No Photo Needed)</p>
+                        <div class="flex gap-2">
+                            <select id="manualFoodSelect"
+                                class="flex-1 px-3 py-2 rounded-lg bg-slate-950 border border-slate-800 text-sm focus:border-emerald-400 focus:outline-none"></select>
+                            <button onclick="selectManualFood()"
+                                class="px-4 py-2 bg-slate-800 hover:bg-slate-700 rounded-lg text-sm font-medium">Load</button>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Right: Prediction & Macro Editor -->
+                <section class="bg-slate-900 border border-slate-800 rounded-2xl p-6 flex flex-col justify-between">
+                    <div>
+                        <h2 class="text-lg font-semibold mb-4">2. Nutrition Breakdown</h2>
+                        <div id="emptyResult" class="text-slate-500 text-sm py-20 text-center">
+                            Upload a food photo or select a dish manually to calculate calories & macronutrients.
+                        </div>
+
+                        <div id="resultBox" class="hidden space-y-5">
+                            <div class="flex justify-between items-start">
+                                <div>
+                                    <p class="text-xs uppercase text-slate-400">Selected Dish</p>
+                                    <h3 id="resName" class="text-2xl font-bold text-emerald-400"></h3>
+                                </div>
+                                <span id="resConf"
+                                    class="px-3 py-1 rounded-full text-xs font-semibold bg-emerald-500/20 text-emerald-300"></span>
+                            </div>
+
+                            <!-- Portion Slider -->
+                            <div class="bg-slate-950 p-4 rounded-xl border border-slate-800 space-y-2">
+                                <div class="flex justify-between text-sm">
+                                    <span>Adjust Portion Weight:</span>
+                                    <strong id="liveGrams" class="text-emerald-400">200 g</strong>
+                                </div>
+                                <input type="range" id="portionSlider" min="30" max="800" step="10" value="200"
+                                    oninput="recalculateMacros()" class="w-full accent-emerald-400">
+                            </div>
+
+                            <!-- Macro Cards -->
+                            <div class="grid grid-cols-4 gap-2 text-center">
+                                <div class="bg-slate-950 p-3 rounded-xl border border-slate-800">
+                                    <p class="text-xs text-slate-400">Calories</p>
+                                    <p id="resCal" class="font-bold text-emerald-400">0</p>
+                                </div>
+                                <div class="bg-slate-950 p-3 rounded-xl border border-slate-800">
+                                    <p class="text-xs text-slate-400">Protein</p>
+                                    <p id="resPro" class="font-bold text-sky-400">0g</p>
+                                </div>
+                                <div class="bg-slate-950 p-3 rounded-xl border border-slate-800">
+                                    <p class="text-xs text-slate-400">Carbs</p>
+                                    <p id="resCarb" class="font-bold text-amber-400">0g</p>
+                                </div>
+                                <div class="bg-slate-950 p-3 rounded-xl border border-slate-800">
+                                    <p class="text-xs text-slate-400">Fat</p>
+                                    <p id="resFat" class="font-bold text-rose-400">0g</p>
+                                </div>
+                            </div>
+
+                            <!-- Clickable Top-3 Predictions -->
+                            <div id="top3Wrapper">
+                                <p class="text-xs text-slate-400 mb-2">Top-3 AI Predictions (click any to switch):</p>
+                                <div id="top3List" class="space-y-1.5 text-sm"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <button id="logBtn" onclick="logMeal()"
+                        class="hidden mt-4 w-full py-2.5 bg-sky-500 hover:bg-sky-600 text-slate-950 font-semibold rounded-lg transition">
+                        + Save Meal to Daily Log
+                    </button>
+                </section>
+            </div>
+
+            <!-- Meal History Table -->
+            <section class="bg-slate-900 border border-slate-800 rounded-2xl p-6">
+                <div class="flex flex-wrap justify-between items-center gap-3 mb-4">
+                    <h2 class="text-lg font-semibold">Recent Meal History</h2>
+                    <a href="/api/export"
+                        class="px-3 py-1.5 text-xs font-medium bg-slate-800 hover:bg-slate-700 text-emerald-400 rounded-lg border border-slate-700">
+                        Download CSV Report
+                    </a>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-sm text-left">
+                        <thead class="text-xs uppercase text-slate-400 border-b border-slate-800">
+                            <tr>
+                                <th class="py-3 px-2">Food</th>
+                                <th class="py-3 px-2">Meal</th>
+                                <th class="py-3 px-2">Portion</th>
+                                <th class="py-3 px-2">Calories</th>
+                                <th class="py-3 px-2">P / C / F</th>
+                                <th class="py-3 px-2">Logged At</th>
+                                <th class="py-3 px-2 text-right">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="mealTable" class="divide-y divide-slate-800/70"></tbody>
+                    </table>
+                </div>
+            </section>
+        </div>
+
+        <!-- ==================== TAB 2: GRAPHS & ANALYTICS ==================== -->
+        <div id="view-graphs" class="hidden space-y-6">
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <section class="lg:col-span-2 bg-slate-900 border border-slate-800 rounded-2xl p-6">
+                    <h2 class="text-lg font-semibold mb-1">7-Day Calorie Intake vs Goal</h2>
+                    <p class="text-xs text-slate-400 mb-4">Daily consumed calories compared with your target threshold
+                    </p>
+                    <div class="h-72">
+                        <canvas id="weeklyChart"></canvas>
+                    </div>
+                </section>
+
+                <section class="bg-slate-900 border border-slate-800 rounded-2xl p-6">
+                    <h2 class="text-lg font-semibold mb-1">Today's Macronutrient Split</h2>
+                    <p class="text-xs text-slate-400 mb-4">Grams of Protein, Carbohydrates & Fat</p>
+                    <div class="h-72 flex items-center justify-center">
+                        <canvas id="macroChart"></canvas>
+                    </div>
+                </section>
+            </div>
+
+            <section class="bg-slate-900 border border-slate-800 rounded-2xl p-6">
+                <h2 class="text-lg font-semibold mb-1">Calories by Meal Type (Today)</h2>
+                <p class="text-xs text-slate-400 mb-4">Distribution across Breakfast, Lunch, Dinner, and Snacks</p>
+                <div class="h-64">
+                    <canvas id="mealTypeChart"></canvas>
+                </div>
+            </section>
+        </div>
+
+        <!-- ==================== TAB 3: BMI, BMR & HEALTH CALCULATOR ==================== -->
+        <div id="view-bmi" class="hidden space-y-6">
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <!-- Profile / Input Form -->
+                <section class="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-4">
+                    <h2 class="text-lg font-semibold">Body Metrics & Calorie Goal Calculator</h2>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-xs text-slate-400 mb-1">Height (cm)</label>
+                            <input type="number" id="bmiHeight" step="0.5"
+                                class="w-full px-3 py-2 rounded-lg bg-slate-950 border border-slate-800 focus:border-emerald-400 focus:outline-none">
+                        </div>
+                        <div>
+                            <label class="block text-xs text-slate-400 mb-1">Weight (kg)</label>
+                            <input type="number" id="bmiWeight" step="0.1"
+                                class="w-full px-3 py-2 rounded-lg bg-slate-950 border border-slate-800 focus:border-emerald-400 focus:outline-none">
+                        </div>
+                        <div>
+                            <label class="block text-xs text-slate-400 mb-1">Age (years)</label>
+                            <input type="number" id="bmiAge"
+                                class="w-full px-3 py-2 rounded-lg bg-slate-950 border border-slate-800 focus:border-emerald-400 focus:outline-none">
+                        </div>
+                        <div>
+                            <label class="block text-xs text-slate-400 mb-1">Gender</label>
+                            <select id="bmiGender"
+                                class="w-full px-3 py-2 rounded-lg bg-slate-950 border border-slate-800 focus:border-emerald-400 focus:outline-none">
+                                <option value="male">Male</option>
+                                <option value="female">Female</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-xs text-slate-400 mb-1">Activity Level</label>
+                            <select id="bmiActivity"
+                                class="w-full px-3 py-2 rounded-lg bg-slate-950 border border-slate-800 focus:border-emerald-400 focus:outline-none text-sm">
+                                <option value="1.2">Sedentary (Little/no exercise)</option>
+                                <option value="1.375">Light (1-3 days/week)</option>
+                                <option value="1.55">Moderate (3-5 days/week)</option>
+                                <option value="1.725">Active (6-7 days/week)</option>
+                                <option value="1.9">Very Active (Physical job/athlete)</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-xs text-slate-400 mb-1">Fitness Goal</label>
+                            <select id="bmiGoal"
+                                class="w-full px-3 py-2 rounded-lg bg-slate-950 border border-slate-800 focus:border-emerald-400 focus:outline-none text-sm">
+                                <option value="lose">Lose Weight (-500 kcal/day)</option>
+                                <option value="maintain">Maintain Weight</option>
+                                <option value="gain">Gain Muscle (+400 kcal/day)</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <button onclick="saveBmiProfile()"
+                        class="w-full py-2.5 bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-semibold rounded-lg transition">
+                        Calculate BMI & Update Daily Calorie Goal
+                    </button>
+                </section>
+
+                <!-- Results & Formula Card -->
+                <section class="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-5">
+                    <div class="flex justify-between items-center">
+                        <div>
+                            <p class="text-xs uppercase text-slate-400">Your Body Mass Index (BMI)</p>
+                            <div class="flex items-baseline gap-3 mt-1">
+                                <span id="bmiValue" class="text-4xl font-bold text-emerald-400">--</span>
+                                <span id="bmiCatBadge"
+                                    class="px-3 py-1 rounded-full text-xs font-semibold bg-emerald-500/20 text-emerald-300">--</span>
+                            </div>
+                        </div>
+                        <div class="text-right">
+                            <p class="text-xs text-slate-400">Healthy Weight Range</p>
+                            <p id="healthyRange" class="font-semibold text-slate-200">--</p>
+                        </div>
+                    </div>
+
+                    <!-- Visual BMI Gauge -->
+                    <div>
+                        <div class="h-3 w-full rounded-full flex overflow-hidden">
+                            <div class="w-1/4 bg-sky-400" title="Underweight < 18.5"></div>
+                            <div class="w-1/4 bg-emerald-400" title="Normal 18.5 - 24.9"></div>
+                            <div class="w-1/4 bg-amber-400" title="Overweight 25 - 29.9"></div>
+                            <div class="w-1/4 bg-rose-500" title="Obese >= 30"></div>
+                        </div>
+                        <div class="flex justify-between text-[11px] text-slate-400 mt-1">
+                            <span>&lt;18.5 Underweight</span>
+                            <span>18.5–24.9 Normal</span>
+                            <span>25–29.9 Overweight</span>
+                            <span>30+ Obese</span>
+                        </div>
+                    </div>
+
+                    <!-- BMR & TDEE Boxes -->
+                    <div class="grid grid-cols-3 gap-3 text-center">
+                        <div class="bg-slate-950 p-3 rounded-xl border border-slate-800">
+                            <p class="text-xs text-slate-400">BMR</p>
+                            <p id="bmrVal" class="text-lg font-bold text-sky-400">--</p>
+                            <p class="text-[10px] text-slate-500">kcal/day at rest</p>
+                        </div>
+                        <div class="bg-slate-950 p-3 rounded-xl border border-slate-800">
+                            <p class="text-xs text-slate-400">TDEE</p>
+                            <p id="tdeeVal" class="text-lg font-bold text-amber-400">--</p>
+                            <p class="text-[10px] text-slate-500">maintenance kcal</p>
+                        </div>
+                        <div class="bg-slate-950 p-3 rounded-xl border border-slate-800">
+                            <p class="text-xs text-slate-400">Target Goal</p>
+                            <p id="recCalVal" class="text-lg font-bold text-emerald-400">--</p>
+                            <p class="text-[10px] text-slate-500">daily kcal target</p>
+                        </div>
+                    </div>
+
+                    <!-- Formula Explanation Box -->
+                    <div class="bg-slate-950 p-4 rounded-xl border border-slate-800 text-xs text-slate-300 space-y-1.5">
+                        <p class="font-semibold text-emerald-400">Formulas Used:</p>
+                        <p><strong>BMI:</strong> Weight (kg) / [Height (m)]² = <span id="bmiFormulaLive"
+                                class="text-slate-100">--</span></p>
+                        <p><strong>BMR (Mifflin-St Jeor):</strong> (10 × weight) + (6.25 × height) − (5 × age) + s
+                            <em>(s = +5 male, −161 female)</em></p>
+                        <p><strong>TDEE:</strong> BMR × Activity Multiplier</p>
+                    </div>
+                </section>
+            </div>
+        </div>
+
+    </main>
+
+    <script>
+        let currentPredictions = [];
+        let activePredIndex = 0;
+        let currentImageUrl = "";
+        let allFoodsCache = [];
+        let weeklyChartObj = null, macroChartObj = null, mealTypeChartObj = null;
+
+        // ---------------- TABS ---------------- //
+        function switchTab(tab) {
+            ["scanner", "graphs", "bmi"].forEach(t => {
+                document.getElementById(`view-${t}`).classList.toggle("hidden", t !== tab);
+                const btn = document.getElementById(`tab-${t}`);
+                if (t === tab) {
+                    btn.className = "tab-btn px-4 py-1.5 rounded-lg text-sm font-medium bg-emerald-500 text-slate-950";
+                } else {
+                    btn.className = "tab-btn px-4 py-1.5 rounded-lg text-sm font-medium text-slate-400 hover:text-white";
+                }
+            });
+            if (tab === "graphs") loadMealsAndCharts();
+        }
+
+        // ---------------- IMAGE PREVIEW & AI PREDICT ---------------- //
+        document.getElementById("foodInput").addEventListener("change", function (e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function (ev) {
+                const img = document.getElementById("previewImg");
+                img.src = ev.target.result;
+                img.classList.remove("hidden");
+                document.getElementById("uploadPrompt").innerText = file.name;
+            };
+            reader.readAsDataURL(file);
+        });
+
+        async function analyzeFood() {
+            const fileInput = document.getElementById("foodInput");
+            if (!fileInput.files.length) return alert("Please upload a food image first.");
+
+            const btn = document.getElementById("analyzeBtn");
+            const status = document.getElementById("statusMsg");
+            btn.disabled = true;
+            status.innerText = "Running Vision Transformer (ViT) recognition...";
+            status.classList.remove("hidden");
+
+            const formData = new FormData();
+            formData.append("image", fileInput.files[0]);
+            const portion = document.getElementById("portionInput").value;
+            if (portion) formData.append("portion_grams", portion);
+
+            try {
+                const res = await fetch("/api/predict", { method: "POST", body: formData });
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.error || "Prediction failed");
+
+                currentPredictions = data.predictions;
+                currentImageUrl = data.image_url;
+                selectPrediction(0, true);
+                status.classList.add("hidden");
+            } catch (err) {
+                status.innerText = "Error: " + err.message;
+            } finally {
+                btn.disabled = false;
+            }
+        }
+
+        function selectPrediction(idx, showTop3 = true) {
+            activePredIndex = idx;
+            const selected = currentPredictions[idx];
+            document.getElementById("emptyResult").classList.add("hidden");
+            document.getElementById("resultBox").classList.remove("hidden");
+            document.getElementById("logBtn").classList.remove("hidden");
+
+            document.getElementById("resName").innerText = selected.display_name;
+            document.getElementById("resConf").innerText = `${selected.confidence}% confidence`;
+            document.getElementById("portionSlider").value = selected.nutrition.portion_grams;
+            recalculateMacros();
+
+            const wrapper = document.getElementById("top3Wrapper");
+            if (showTop3 && currentPredictions.length > 1) {
+                wrapper.classList.remove("hidden");
+                document.getElementById("top3List").innerHTML = currentPredictions.map((p, i) => `
+                    <button onclick="selectPrediction(${i}, true)"
+                        class="w-full flex justify-between items-center px-3 py-2 rounded-lg border transition ${i === idx ? 'bg-emerald-500/15 border-emerald-500/50 text-emerald-300' : 'bg-slate-950 border-slate-800 hover:border-slate-600'}">
+                        <span>#${i + 1} ${p.display_name}</span>
+                        <span class="font-medium">${p.confidence}%</span>
+                    </button>
+                `).join("");
+            } else {
+                wrapper.classList.add("hidden");
+            }
+        }
+
+        // ---------------- MANUAL FOOD SELECTION ---------------- //
+        async function loadFoodDropdown() {
+            const res = await fetch("/api/foods");
+            const data = await res.json();
+            allFoodsCache = data.foods;
+            document.getElementById("manualFoodSelect").innerHTML = allFoodsCache.map((f, i) =>
+                `<option value="${i}">${f.display_name} (${f.per_100g.calories} kcal/100g)</option>`
+            ).join("");
+        }
+
+        function selectManualFood() {
+            const idx = document.getElementById("manualFoodSelect").value;
+            const food = allFoodsCache[idx];
+            if (!food) return;
+
+            currentImageUrl = "";
+            currentPredictions = [{
+                label: food.key,
+                display_name: food.display_name,
+                confidence: 100.0,
+                nutrition: {
+                    portion_grams: food.default_serving,
+                    per_100g: food.per_100g
+                }
+            }];
+            selectPrediction(0, false);
+        }
+
+        function recalculateMacros() {
+            if (!currentPredictions.length) return;
+            const grams = Number(document.getElementById("portionSlider").value);
+            const per100 = currentPredictions[activePredIndex].nutrition.per_100g;
+            const factor = grams / 100.0;
+
+            document.getElementById("liveGrams").innerText = `${grams} g`;
+            document.getElementById("resCal").innerText = `${(per100.calories * factor).toFixed(1)} kcal`;
+            document.getElementById("resPro").innerText = `${(per100.protein * factor).toFixed(1)}g`;
+            document.getElementById("resCarb").innerText = `${(per100.carbs * factor).toFixed(1)}g`;
+            document.getElementById("resFat").innerText = `${(per100.fat * factor).toFixed(1)}g`;
+        }
+
+        async function logMeal() {
+            if (!currentPredictions.length) return;
+            const pred = currentPredictions[activePredIndex];
+            const grams = Number(document.getElementById("portionSlider").value);
+            const per100 = pred.nutrition.per_100g;
+            const factor = grams / 100.0;
+
+            const payload = {
+                meal_type: document.getElementById("mealType").value,
+                food_name: pred.display_name,
+                confidence: pred.confidence,
+                portion_grams: grams,
+                calories: Number((per100.calories * factor).toFixed(1)),
+                protein: Number((per100.protein * factor).toFixed(1)),
+                carbs: Number((per100.carbs * factor).toFixed(1)),
+                fat: Number((per100.fat * factor).toFixed(1)),
+                image_path: currentImageUrl
+            };
+
+            const res = await fetch("/api/meals", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(payload)
+            });
+
+            if (res.ok) {
+                await loadMealsAndCharts();
+                alert("Meal logged successfully!");
+            }
+        }
+
+        async function deleteMeal(id) {
+            await fetch(`/api/meals/${id}`, { method: "DELETE" });
+            loadMealsAndCharts();
+        }
+
+        // ---------------- MEALS + CHARTS ---------------- //
+        async function loadMealsAndCharts() {
+            const res = await fetch("/api/meals");
+            if (!res.ok) return;
+            const data = await res.json();
+
+            const t = data.today_totals;
+            const goal = data.daily_goal || 2000;
+            document.getElementById("goalVal").innerText = goal;
+            document.getElementById("sumCal").innerText = t.calories;
+            document.getElementById("sumPro").innerText = t.protein;
+            document.getElementById("sumCarb").innerText = t.carbs;
+            document.getElementById("sumFat").innerText = t.fat;
+
+            const remaining = Math.max(0, (goal - t.calories).toFixed(1));
+            document.getElementById("remainingCal").innerText = remaining;
+
+            const pct = Math.min(100, (t.calories / goal) * 100);
+            const bar = document.getElementById("calProgress");
+            bar.style.width = pct + "%";
+            bar.className = `h-3 rounded-full transition-all duration-500 ${t.calories > goal ? 'bg-rose-500' : 'bg-emerald-400'}`;
+
+            // Render Meal Table
+            const tbody = document.getElementById("mealTable");
+            if (!data.meals.length) {
+                tbody.innerHTML = `<tr><td colspan="7" class="py-6 text-center text-slate-500">No meals logged yet.</td></tr>`;
+            } else {
+                tbody.innerHTML = data.meals.map(m => `
+                    <tr class="hover:bg-slate-800/40">
+                        <td class="py-3 px-2 font-medium flex items-center gap-3">
+                            ${m.image_path ? `<img src="${m.image_path}" class="w-9 h-9 rounded-lg object-cover">` : `<div class="w-9 h-9 rounded-lg bg-slate-800 flex items-center justify-center text-xs text-slate-400">🍽️</div>`}
+                            <span>${m.food_name}</span>
+                        </td>
+                        <td class="py-3 px-2"><span class="px-2 py-0.5 text-xs rounded bg-slate-800 text-slate-300">${m.meal_type}</span></td>
+                        <td class="py-3 px-2">${m.portion_grams}g</td>
+                        <td class="py-3 px-2 text-emerald-400 font-semibold">${m.calories} kcal</td>
+                        <td class="py-3 px-2 text-slate-300">${m.protein}g / ${m.carbs}g / ${m.fat}g</td>
+                        <td class="py-3 px-2 text-slate-400">${m.logged_at}</td>
+                        <td class="py-3 px-2 text-right">
+                            <button onclick="deleteMeal(${m.id})" class="text-rose-400 hover:underline text-xs">Delete</button>
+                        </td>
+                    </tr>
+                `).join("");
+            }
+
+            renderCharts(data);
+        }
+
+        function renderCharts(data) {
+            Chart.defaults.color = "#94a3b8";
+            Chart.defaults.borderColor = "#1e293b";
+
+            // 1. Weekly Calorie Trend Chart
+            if (weeklyChartObj) weeklyChartObj.destroy();
+            weeklyChartObj = new Chart(document.getElementById("weeklyChart"), {
+                type: "bar",
+                data: {
+                    labels: data.weekly_trend.map(d => d.label),
+                    datasets: [
+                        {
+                            label: "Calories Consumed",
+                            data: data.weekly_trend.map(d => d.calories),
+                            backgroundColor: "rgba(52, 211, 153, 0.7)",
+                            borderColor: "#34d399",
+                            borderWidth: 1,
+                            borderRadius: 6
+                        },
+                        {
+                            label: "Daily Goal",
+                            type: "line",
+                            data: data.weekly_trend.map(() => data.daily_goal),
+                            borderColor: "#f43f5e",
+                            borderDash: [6, 4],
+                            pointRadius: 0,
+                            fill: false
+                        }
+                    ]
+                },
+                options: { responsive: true, maintainAspectRatio: false }
+            });
+
+            // 2. Macro Doughnut Chart
+            const t = data.today_totals;
+            if (macroChartObj) macroChartObj.destroy();
+            macroChartObj = new Chart(document.getElementById("macroChart"), {
+                type: "doughnut",
+                data: {
+                    labels: ["Protein (g)", "Carbs (g)", "Fat (g)"],
+                    datasets: [{
+                        data: (t.protein + t.carbs + t.fat) > 0 ? [t.protein, t.carbs, t.fat] : [1, 1, 1],
+                        backgroundColor: ["#38bdf8", "#fbbf24", "#fb7185"],
+                        borderWidth: 0
+                    }]
+                },
+                options: { responsive: true, maintainAspectRatio: false, cutout: "65%" }
+            });
+
+            // 3. Meal Type Bar Chart
+            const mt = data.meal_type_breakdown;
+            if (mealTypeChartObj) mealTypeChartObj.destroy();
+            mealTypeChartObj = new Chart(document.getElementById("mealTypeChart"), {
+                type: "bar",
+                data: {
+                    labels: Object.keys(mt),
+                    datasets: [{
+                        label: "Calories (kcal)",
+                        data: Object.values(mt),
+                        backgroundColor: ["#38bdf8", "#34d399", "#a78bfa", "#fbbf24"],
+                        borderRadius: 6
+                    }]
+                },
+                options: { responsive: true, maintainAspectRatio: false, indexAxis: "y" }
+            });
+        }
+
+        // ---------------- BMI & HEALTH PROFILE ---------------- //
+        async function loadBmiProfile() {
+            const res = await fetch("/api/profile");
+            if (!res.ok) return;
+            const { profile, metrics } = await res.json();
+
+            document.getElementById("bmiHeight").value = profile.height_cm;
+            document.getElementById("bmiWeight").value = profile.weight_kg;
+            document.getElementById("bmiAge").value = profile.age;
+            document.getElementById("bmiGender").value = profile.gender;
+            document.getElementById("bmiActivity").value = String(profile.activity_level);
+            document.getElementById("bmiGoal").value = profile.fitness_goal;
+
+            displayMetrics(profile.height_cm, profile.weight_kg, metrics);
+        }
+
+        function displayMetrics(h, w, m) {
+            document.getElementById("bmiValue").innerText = m.bmi;
+            document.getElementById("bmiCatBadge").innerText = m.bmi_category;
+            document.getElementById("miniBmiBadge").innerText = `${m.bmi} (${m.bmi_category})`;
+            document.getElementById("healthyRange").innerText = m.healthy_weight_range;
+            document.getElementById("bmrVal").innerText = m.bmr;
+            document.getElementById("tdeeVal").innerText = m.tdee;
+            document.getElementById("recCalVal").innerText = m.recommended_calories;
+
+            const hMeters = (h / 100).toFixed(2);
+            document.getElementById("bmiFormulaLive").innerText = `${w} / (${hMeters})² = ${m.bmi}`;
+        }
+
+        async function saveBmiProfile() {
+            const payload = {
+                height_cm: Number(document.getElementById("bmiHeight").value),
+                weight_kg: Number(document.getElementById("bmiWeight").value),
+                age: Number(document.getElementById("bmiAge").value),
+                gender: document.getElementById("bmiGender").value,
+                activity_level: Number(document.getElementById("bmiActivity").value),
+                fitness_goal: document.getElementById("bmiGoal").value
+            };
+
+            const res = await fetch("/api/profile", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(payload)
+            });
+
+            if (res.ok) {
+                const data = await res.json();
+                displayMetrics(payload.height_cm, payload.weight_kg, data.metrics);
+                await loadMealsAndCharts();
+                alert(`Updated! New Daily Calorie Goal: ${data.daily_goal} kcal`);
+            }
+        }
+
+        // ---------------- WATER TRACKER ---------------- //
+        async function loadWater() {
+            const res = await fetch("/api/water");
+            if (!res.ok) return;
+            const data = await res.json();
+            document.getElementById("waterCount").innerText = data.glasses;
+            document.getElementById("waterMl").innerText = data.glasses * 250;
+        }
+
+        async function updateWater(delta) {
+            const res = await fetch("/api/water", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ delta })
+            });
+            if (res.ok) {
+                const data = await res.json();
+                document.getElementById("waterCount").innerText = data.glasses;
+                document.getElementById("waterMl").innerText = data.glasses * 250;
+            }
+        }
+
+        // Initial Load
+        loadFoodDropdown();
+        loadMealsAndCharts();
+        loadBmiProfile();
+        loadWater();
+    </script>
+</body>
+
+</html>
